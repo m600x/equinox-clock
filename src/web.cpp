@@ -2,12 +2,6 @@
 
 WebServer server(80);
 
-bool credentials_saved = false;
-bool time_synced = false;
-unsigned long connect_start_time = 0;
-int timezone_offset = 0;
-String timezone_name = "";
-
 void handle_root() {
     String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Equinox WiFi</title>";
     html += "<style>body{font-family:sans-serif;max-width:350px;margin:40px auto;padding:20px;background:#1a1a2e;color:#eee}";
@@ -66,15 +60,3 @@ void handle_save() {
     }
 }
 
-void sync_time(int timezone_offset) {
-    configTime(timezone_offset, 0, "pool.ntp.org", "time.google.com");
-    struct tm timeinfo;
-    if (getLocalTime(&timeinfo)) {
-        Serial.println("Time synced");
-        time_synced = true;
-        hours = timeinfo.tm_hour;
-        minutes = timeinfo.tm_min;
-        seconds = timeinfo.tm_sec;
-        set_builtin_led(0, 255, 0);
-    }
-}

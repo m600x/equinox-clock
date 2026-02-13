@@ -11,7 +11,7 @@ uint32_t CLR_MIN_FADE;
 uint32_t CLR_SEC_MAIN;
 uint32_t CLR_BLACK;
 
-String strip_mode = "";
+stripStruct stripState;
 
 void init_colors() {
     CLR_HRS_MAIN = strip.Color(255, 255, 0);
@@ -96,16 +96,14 @@ void npx_trailing_sec(int npx_seconds, int npx_hours, int npx_minutes) {
     npx_trailing_set(npx_p2, npx_p1, npx_n1, npx_n2, npx_hours, npx_minutes);
 }
 
-void npx_clock(int hours, int minutes, int seconds) {
+void strip_clock() {
     npx_clear();
-    if (hours > 12)
-        hours -= 12;
-    int npx_hours = get_offset(hours * 5);
-    int npx_minutes = get_offset(minutes);
-    int npx_seconds = get_offset(seconds);
-
+    if (timeState.hours > 12)
+        timeState.hours -= 12;
+    int npx_hours = get_offset(timeState.hours * 5);
+    int npx_minutes = get_offset(timeState.minutes);
+    int npx_seconds = get_offset(timeState.seconds);
     set_strip_color(npx_minutes, CLR_MIN_BLK1);
-//    npx_trailing(npx_minutes, (seconds % 2) ? CLR_MIN_BLK1 : CLR_MIN_BLK2, CLR_MIN_FADE);
 
     npx_trailing(npx_hours, CLR_HRS_MAIN, CLR_HRS_FADE);
 
@@ -113,19 +111,6 @@ void npx_clock(int hours, int minutes, int seconds) {
         set_strip_color(npx_seconds, CLR_SEC_MAIN);
 
     npx_trailing_sec(npx_seconds, npx_hours, npx_minutes);
-}
-
-void display_time() {
-    struct tm timeinfo;
-    if (!getLocalTime(&timeinfo))
-        return;
-    static int last_second = -1;
-    hours = timeinfo.tm_hour;
-    minutes = timeinfo.tm_min;
-    seconds = timeinfo.tm_sec;
-    strip_mode = "clock";
-    oled_lines[2] = String(hours) + ":" + (minutes < 10 ? "0" : "") + String(minutes) + ":" + (seconds < 10 ? "0" : "") + String(seconds);
-    last_second = seconds;
 }
 
 void strip_rainbow() {
@@ -154,5 +139,12 @@ void strip_loading_spinner() {
             set_strip_color(pos, strip.ColorHSV(0x8000, 255, brightness[i]));
         }
     }
+    strip.show();
+}
+
+void strip_init() {
+    init_colors();
+    strip.begin();
+    strip.setBrightness(255);
     strip.show();
 }

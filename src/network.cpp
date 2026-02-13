@@ -5,11 +5,14 @@ void start_ap() {
     WiFi.mode(WIFI_AP);
     WiFi.softAPConfig(IPAddress(10, 0, 0, 1), IPAddress(10, 0, 0, 1), IPAddress(255, 255, 255, 0));
     WiFi.softAP(NAME);
-    oled_lines[1] = NAME;
-    oled_lines[2] = "10.0.0.1";
     server.on("/", HTTP_GET, handle_root);
     server.on("/save", HTTP_POST, handle_save);
     server.begin();
+
+    stripState.mode = "rainbow";
+    oledState.active = true;
+    oledState.lines[1] = NAME;
+    oledState.lines[2] = "10.0.0.1";
 }
 
 void init_ota() {
