@@ -15,7 +15,17 @@ void start_ap() {
     oledState.lines[2] = "10.0.0.1";
 }
 
-void init_ota() {
+void debugger_init() {
+    Debug.begin(NAME);
+    Debug.setResetCmdEnabled(true);
+    Debug.showTime(true);
+    Debug.showProfiler(true);
+    Debug.showColors(true);
+    debugger_available = true;
+    logger("RemoteDebug ready");
+}
+
+void ota_init() {
     ArduinoOTA.setHostname(NAME);
     ArduinoOTA
         .onStart([]() {

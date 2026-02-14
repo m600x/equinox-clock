@@ -19,7 +19,6 @@ void loop_ux(void *pvParameters) {
             strip_clock();
         if (oledState.active) {
             oled_main();
-//            oled_print_lines();
         }
         else {
             oled.clearDisplay();
@@ -30,7 +29,7 @@ void loop_ux(void *pvParameters) {
 }
 
 void loop_cron(void *pvParameters) {
-    oledState.sleep = millis() + 30000000; //TODO DECREASE 1000
+    oledState.sleep = millis() + 10000;
     while (1) {
         if (oledState.active && millis() > oledState.sleep) {
             oledState.active = false;
@@ -54,16 +53,6 @@ void setup() {
 
     builtin_led.begin();
     builtin_led.setBrightness(32);
-    set_builtin_led(255, 255, 255);
-    delay(500);
-    set_builtin_led(255, 0, 0);
-    delay(500);
-    set_builtin_led(0, 255, 0);
-    delay(500);
-    set_builtin_led(0, 0, 255);
-    delay(500);
-    set_builtin_led(0, 0, 0);
-    delay(500);
 
     pinMode(BTN_LEFT_PIN, INPUT);
     attachInterrupt(digitalPinToInterrupt(BTN_LEFT_PIN), btn_left_interrupt, FALLING);
@@ -74,54 +63,44 @@ void setup() {
     xTaskCreatePinnedToCore(loop_cron, "loop_cron", 8192, NULL, 1, NULL, 1);
 
     if (!pref_has_value("ssid") || pref_get_string("ssid").length() == 0) {
-        
-        Serial.println("No credentials");
+        logger("No credentials found, starting AP");
         start_ap();
         set_builtin_led(255, 0, 0);
     }
     else {
-        oledState.lines[0] = "Connecting";
-        oledState.lines[2] = pref_get_string("ssid");
-        stripState.mode = "spinner";
-
-        Serial.println("Credentials found");
         String ssid = pref_get_string("ssid");
         String pass = pref_get_string("pass");
-        Serial.print("SSID: ");
-        Serial.println(ssid);
+        logger("Credentials found, connecting to: [" + pass + "]");
+
+        oledState.lines[0] = "Connecting";
+        oledState.lines[2] = ssid;
+        stripState.mode = "spinner";
 
         WiFi.disconnect(true);
         WiFi.mode(WIFI_STA);
         WiFi.setHostname(NAME);
-        unsigned int connect_start_time = millis();
 
         if (pass.length() > 0)
-            WiFi.begin(ssid.c_str(), pass.c_str());
+        WiFi.begin(ssid.c_str(), pass.c_str());
         else
-            WiFi.begin(ssid.c_str());
+        WiFi.begin(ssid.c_str());
 
-
+        unsigned int connect_start_time = millis();
         while (WiFi.status() != WL_CONNECTED) {
             if (millis() - connect_start_time > CONNECT_TIMEOUT_MS) {
-                Serial.println("Connection timeout, switching to AP mode");
+                logger("Connection timeout, switching to AP mode");
                 start_ap();
                 set_builtin_led(255, 0, 0);
                 return;
             }
             set_builtin_led(255, 165, 0);
-            Serial.print(".");
             delay(10);
         }
 
         oledState.lines[0] = "";
 
-        init_ota();
-
-        Debug.begin(NAME);
-        Debug.setResetCmdEnabled(true);
-        Debug.showProfiler(true);
-        Debug.showColors(true);
-        Serial.println("RemoteDebug ready");
+        ota_init();
+        debugger_init();
 
         pref_set_int("boot_count", 0);
 
@@ -133,10 +112,8 @@ void loop() {
     ArduinoOTA.handle();
     Debug.handle();
     server.handleClient();
-
     if (WiFi.status() == WL_CONNECTED) {
         update_time();
     }
-
     delay(20);
 }

@@ -27,7 +27,7 @@ void sync_time(int timezone_offset) {
     configTime(timezone_offset, 0, "pool.ntp.org", "time.google.com");
     struct tm timeinfo;
     if (getLocalTime(&timeinfo)) {
-        Serial.println("Time synced");
+        logger("Time synced");
         timeState.synced = true;
         timeState.hours = timeinfo.tm_hour;
         timeState.minutes = timeinfo.tm_min;
@@ -37,14 +37,12 @@ void sync_time(int timezone_offset) {
 }
 
 void time_init() {
+    logger("Init time");
     if (WiFi.status() == WL_CONNECTED) {
         String tz = pref_get_string("timezone");
-        Serial.print("Timezone: ");
-        Serial.println(tz);
         timeState.tz_offset = parse_utc_offset(tz);
-        Serial.print("Offset: ");
-        Serial.println(timeState.tz_offset);
-
+        logger("Timezone: " + tz);
+        logger("Time offset: " + timeState.tz_offset);
         sync_time(timeState.tz_offset);
         set_builtin_led(0, 255, 0);
     }

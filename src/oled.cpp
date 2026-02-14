@@ -43,7 +43,7 @@ void oled_print_lines() {
 void oled_init() {
     Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
     if (!oled.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
-        Serial.println("OLED init failed");
+        logger("OLED init failed");
         return;
     }
     oled.clearDisplay();

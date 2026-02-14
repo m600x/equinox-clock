@@ -33,7 +33,7 @@ extern Adafruit_SSD1306 oled;
 extern Preferences preferences;
 extern WebServer server;
 extern RemoteDebug Debug;
-
+extern bool debugger_available;
 
 struct timeStruct {
     bool synced = false;
@@ -71,7 +71,8 @@ void strip_init();
 
 // network.cpp
 void start_ap();
-void init_ota();
+void debugger_init();
+void ota_init();
 
 // oled.cpp
 void oled_main();
