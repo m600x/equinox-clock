@@ -13,6 +13,15 @@ uint32_t CLR_BLACK;
 
 stripStruct stripState;
 
+static void read_time_snapshot(int &h, int &m, int &s, int &ms) {
+    portENTER_CRITICAL(&timeMux);
+    h = timeState.hours;
+    m = timeState.minutes;
+    s = timeState.seconds;
+    ms = timeState.millis;
+    portEXIT_CRITICAL(&timeMux);
+}
+
 void init_colors() {
     CLR_HRS_MAIN = strip.Color(255, 255, 0);
     CLR_HRS_FADE = strip.Color(50, 50, 0);
@@ -45,7 +54,7 @@ void npx_clear() {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
         set_strip_color(i, CLR_BLACK);
     }
-    strip.show();
+//    strip.show();
 }
 
 void npx_trailing(int pixel, uint32_t clr_main, uint32_t clr_fade) {
@@ -63,26 +72,24 @@ void npx_trailing(int pixel, uint32_t clr_main, uint32_t clr_fade) {
         set_strip_color(next, clr_fade);
 }
 
-void npx_trailing_set(int npx_p2, int npx_p1, int npx_n1, int npx_n2, int npx_hours, int npx_minutes) {
-    for (int i = 0; i < FADE; i++) {
-        uint32_t clr_n2 = strip.Color(0, map(i, 0, FADE, 10, 128), map(i, 0, FADE, 10, 128));
-        uint32_t clr_n1 = strip.Color(0, map(i, 0, FADE, 128, 255), map(i, 0, FADE, 128, 255));
-        uint32_t clr_p1 = strip.Color(0, map(i, 0, FADE, 255, 128), map(i, 0, FADE, 255, 128));
-        uint32_t clr_p2 = strip.Color(0, map(i, 0, FADE, 128, 10), map(i, 0, FADE, 128, 10));
-        if (npx_n2 != npx_hours && npx_n2 != npx_minutes)
-            set_strip_color(npx_n2, clr_n2);
-        if (npx_n1 != npx_hours && npx_n1 != npx_minutes)
-            set_strip_color(npx_n1, clr_n1);
-        if (npx_p1 != npx_hours && npx_p1 != npx_minutes)
-            set_strip_color(npx_p1, clr_p1);
-        if (npx_p2 != npx_hours && npx_p2 != npx_minutes)
-            set_strip_color(npx_p2, clr_p2);
-        strip.show();
-        delay(50);
-    }
+void npx_trailing_set_timebased(int npx_p2, int npx_p1, int npx_n1, int npx_n2,
+                                int npx_hours, int npx_minutes, int ms) {
+    int i = (ms * FADE) / 1000;
+    if (i < 0) i = 0;
+    if (i >= FADE) i = FADE - 1;
+
+    uint32_t clr_n2 = strip.Color(0, map(i, 0, FADE, 10, 128),  map(i, 0, FADE, 10, 128));
+    uint32_t clr_n1 = strip.Color(0, map(i, 0, FADE, 128, 255), map(i, 0, FADE, 128, 255));
+    uint32_t clr_p1 = strip.Color(0, map(i, 0, FADE, 255, 128), map(i, 0, FADE, 255, 128));
+    uint32_t clr_p2 = strip.Color(0, map(i, 0, FADE, 128, 10),  map(i, 0, FADE, 128, 10));
+
+    if (npx_n2 != npx_hours && npx_n2 != npx_minutes) set_strip_color(npx_n2, clr_n2);
+    if (npx_n1 != npx_hours && npx_n1 != npx_minutes) set_strip_color(npx_n1, clr_n1);
+    if (npx_p1 != npx_hours && npx_p1 != npx_minutes) set_strip_color(npx_p1, clr_p1);
+    if (npx_p2 != npx_hours && npx_p2 != npx_minutes) set_strip_color(npx_p2, clr_p2);
 }
 
-void npx_trailing_sec(int npx_seconds, int npx_hours, int npx_minutes) {
+void npx_trailing_sec(int npx_seconds, int npx_hours, int npx_minutes, int ms) {
     int npx_n2 = npx_seconds + 2;
     int npx_n1 = npx_seconds + 1;
     int npx_p1 = npx_seconds - 1;
@@ -90,19 +97,35 @@ void npx_trailing_sec(int npx_seconds, int npx_hours, int npx_minutes) {
     switch (npx_seconds) {
         case STRIP_NUM_PIXELS - 2: { npx_n2 = 0; npx_n1 = STRIP_NUM_PIXELS - 1; break; }
         case STRIP_NUM_PIXELS - 1: { npx_n2 = 1; npx_n1 = 0; break; }
-        case 0: { npx_n1 = npx_seconds + 2; npx_n2 = npx_seconds + 1; npx_p1 = STRIP_NUM_PIXELS - 1; npx_p2 = STRIP_NUM_PIXELS - 2; break; }
-        case 1: { npx_n1 = npx_seconds + 2; npx_n2 = npx_seconds + 1; npx_p1 = 0; npx_p2 = STRIP_NUM_PIXELS - 1; break; }
+        case 0: {
+            npx_n1 = npx_seconds + 1;
+            npx_n2 = npx_seconds + 2;
+            npx_p1 = STRIP_NUM_PIXELS - 1;
+            npx_p2 = STRIP_NUM_PIXELS - 2;
+            break;
+        }
+        case 1: {
+            npx_n1 = npx_seconds + 1;
+            npx_n2 = npx_seconds + 2;
+            npx_p1 = 0;
+            npx_p2 = STRIP_NUM_PIXELS - 1;
+            break;
+        }
     }
-    npx_trailing_set(npx_p2, npx_p1, npx_n1, npx_n2, npx_hours, npx_minutes);
+    npx_trailing_set_timebased(npx_p2, npx_p1, npx_n1, npx_n2, npx_hours, npx_minutes, ms);
 }
 
 void strip_clock() {
+    int h, m, s, ms;
+    read_time_snapshot(h, m, s, ms);
+
+    int h12 = h % 12;
+
     npx_clear();
-    if (timeState.hours > 12)
-        timeState.hours -= 12;
-    int npx_hours = get_offset(timeState.hours * 5);
-    int npx_minutes = get_offset(timeState.minutes);
-    int npx_seconds = get_offset(timeState.seconds);
+
+    int npx_hours = get_offset(h12 * 5);
+    int npx_minutes = get_offset(m);
+    int npx_seconds = get_offset(s);
     set_strip_color(npx_minutes, CLR_MIN_BLK1);
 
     npx_trailing(npx_hours, CLR_HRS_MAIN, CLR_HRS_FADE);
@@ -110,7 +133,8 @@ void strip_clock() {
     if (npx_seconds != npx_hours && npx_seconds != npx_minutes)
         set_strip_color(npx_seconds, CLR_SEC_MAIN);
 
-    npx_trailing_sec(npx_seconds, npx_hours, npx_minutes);
+    npx_trailing_sec(npx_seconds, npx_hours, npx_minutes, ms);
+    strip.show();
 }
 
 void strip_rainbow() {

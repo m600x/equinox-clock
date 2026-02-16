@@ -15,6 +15,8 @@
 #include <Adafruit_GFX.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/portmacro.h>
 
 #define NAME "Equinox"
 #define BUILTIN_LED_PIN 21
@@ -40,12 +42,16 @@ struct timeStruct {
     unsigned int last_sync = 0;
     String tz_name = "";
     int tz_offset = 0;
+
     int hours = 0;
     int minutes = 0;
     int seconds = 0;
-    String time_str = "00:00:00";
+    int millis = 0;
+
+    char time_str[9] = "00:00:00";
 };
 extern timeStruct timeState;
+extern portMUX_TYPE timeMux;
 
 
 struct stripStruct {
@@ -89,11 +95,10 @@ void pref_clear_memory();
 void pref_boot_count();
 
 // time.cpp
-void update_time();
-void sync_time(int timezone_offset);
-void time_init();
+void sync_time();
 
 // utils.cpp
+void format_time_str_unsafe();
 void logger(String message);
 
 // web.cpp

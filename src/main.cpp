@@ -6,6 +6,42 @@ int hours;
 int minutes;
 int seconds;
 
+/*
+Keep timeStruct in sync down to the millis level, but only update the time string when seconds change.
+This is to ensure accurate time keeping in the strip
+*/
+void loop_time(void *pvParameters) {
+    struct timeval tv;
+    struct tm tmLocal;
+    time_t lastSec = (time_t)-1;
+
+    sync_time();
+
+    while (1) {
+        gettimeofday(&tv, nullptr);
+        int ms = (int)(tv.tv_usec / 1000);
+
+        if (tv.tv_sec != lastSec) {
+            lastSec = tv.tv_sec;
+            localtime_r(&tv.tv_sec, &tmLocal);
+
+            portENTER_CRITICAL(&timeMux);
+            timeState.hours = tmLocal.tm_hour;
+            timeState.minutes = tmLocal.tm_min;
+            timeState.seconds = tmLocal.tm_sec;
+            timeState.millis = ms;
+            format_time_str_unsafe();
+            portEXIT_CRITICAL(&timeMux);
+        } else {
+            portENTER_CRITICAL(&timeMux);
+            timeState.millis = ms;
+            portEXIT_CRITICAL(&timeMux);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
 void loop_ux(void *pvParameters) {
     strip_init();
     oled_init();
@@ -104,7 +140,7 @@ void setup() {
 
         pref_set_int("boot_count", 0);
 
-        time_init();
+        xTaskCreatePinnedToCore(loop_time, "loop_time", 4096, NULL, 2, NULL, 0);
     }
 }
 
@@ -112,8 +148,5 @@ void loop() {
     ArduinoOTA.handle();
     Debug.handle();
     server.handleClient();
-    if (WiFi.status() == WL_CONNECTED) {
-        update_time();
-    }
     delay(20);
 }

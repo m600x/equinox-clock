@@ -1,20 +1,8 @@
 #include "Equinox.h"
+#include <sys/time.h>
 
 timeStruct timeState;
-
-void update_time() {
-    struct tm timeinfo;
-    if (!getLocalTime(&timeinfo))
-        return;
-    timeState.hours = timeinfo.tm_hour;
-    timeState.minutes = timeinfo.tm_min;
-    timeState.seconds = timeinfo.tm_sec;
-
-    stripState.mode = "clock";
-    timeState.time_str = (timeState.hours < 10 ? "0" : "") + String(timeState.hours) + ":"
-                        + (timeState.minutes < 10 ? "0" : "") + String(timeState.minutes) + ":"
-                        + (timeState.seconds < 10 ? "0" : "") + String(timeState.seconds);
-}
+portMUX_TYPE timeMux = portMUX_INITIALIZER_UNLOCKED;
 
 int parse_utc_offset(const String &utc_offset) {
     if (utc_offset.length() < 5) return 0;
@@ -23,27 +11,31 @@ int parse_utc_offset(const String &utc_offset) {
     return sign * hours * 3600;
 }
 
-void sync_time(int timezone_offset) {
-    configTime(timezone_offset, 0, "pool.ntp.org", "time.google.com");
-    struct tm timeinfo;
-    if (getLocalTime(&timeinfo)) {
-        logger("Time synced");
-        timeState.synced = true;
-        timeState.hours = timeinfo.tm_hour;
-        timeState.minutes = timeinfo.tm_min;
-        timeState.seconds = timeinfo.tm_sec;
-        set_builtin_led(0, 255, 0);
-    }
-}
-
-void time_init() {
-    logger("Init time");
+void sync_time() {
     if (WiFi.status() == WL_CONNECTED) {
+        struct timeval tv;
+        struct tm tmLocal;
+
         String tz = pref_get_string("timezone");
         timeState.tz_offset = parse_utc_offset(tz);
-        logger("Timezone: " + tz);
-        logger("Time offset: " + timeState.tz_offset);
-        sync_time(timeState.tz_offset);
+
+        configTime(timeState.tz_offset, 0, "pool.ntp.org", "time.google.com");
+
+        if (gettimeofday(&tv, nullptr) != 0)
+            return;
+        localtime_r(&tv.tv_sec, &tmLocal);
+
+        portENTER_CRITICAL(&timeMux);
+        timeState.synced = true;
+        timeState.hours = tmLocal.tm_hour;
+        timeState.minutes = tmLocal.tm_min;
+        timeState.seconds = tmLocal.tm_sec;
+        timeState.millis = (int)(tv.tv_usec / 1000);
+        format_time_str_unsafe();
+        portEXIT_CRITICAL(&timeMux);
+
+        logger("Time synced");
+        stripState.mode = "clock";
         set_builtin_led(0, 255, 0);
     }
 }
