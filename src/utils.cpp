@@ -2,6 +2,13 @@
 
 bool debugger_available = false;
 
+uint32_t darken_color(uint32_t c) {
+    uint8_t r = (c >> 16) & 0xFF;
+    uint8_t g = (c >> 8) & 0xFF;
+    uint8_t b = c & 0xFF;
+    return ((r / 5) << 16) | ((g / 5) << 8) | (b / 5);
+}
+
 void format_time_str_unsafe() {
     snprintf(timeState.time_str, sizeof(timeState.time_str),
              "%02d:%02d:%02d",

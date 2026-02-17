@@ -3,14 +3,6 @@
 Adafruit_NeoPixel builtin_led(1, BUILTIN_LED_PIN, NEO_RGB + NEO_KHZ800);
 Adafruit_NeoPixel strip(STRIP_NUM_PIXELS, STRIP_PIN, NEO_GRB + NEO_KHZ800);
 
-uint32_t CLR_HRS_MAIN;
-uint32_t CLR_HRS_FADE;
-uint32_t CLR_MIN_BLK1;
-uint32_t CLR_MIN_BLK2;
-uint32_t CLR_MIN_FADE;
-uint32_t CLR_SEC_MAIN;
-uint32_t CLR_BLACK;
-
 stripStruct stripState;
 
 static void read_time_snapshot(int &h, int &m, int &s, int &ms) {
@@ -20,16 +12,6 @@ static void read_time_snapshot(int &h, int &m, int &s, int &ms) {
     s = timeState.seconds;
     ms = timeState.millis;
     portEXIT_CRITICAL(&timeMux);
-}
-
-void init_colors() {
-    CLR_HRS_MAIN = strip.Color(255, 255, 0);
-    CLR_HRS_FADE = strip.Color(50, 50, 0);
-    CLR_MIN_BLK1 = strip.Color(255, 0, 255);
-    CLR_MIN_BLK2 = strip.Color(128, 0, 128);
-    CLR_MIN_FADE = strip.Color(50, 0, 50);
-    CLR_SEC_MAIN = strip.Color(0, 255, 255);
-    CLR_BLACK = strip.Color(0, 0, 0);
 }
 
 int get_offset(int pos) {
@@ -52,24 +34,23 @@ void set_strip_color(uint16_t index, uint32_t color) {
 
 void npx_clear() {
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        set_strip_color(i, CLR_BLACK);
+        set_strip_color(i, STRIP_BLACK);
     }
-//    strip.show();
 }
 
-void npx_trailing(int pixel, uint32_t clr_main, uint32_t clr_fade) {
+void npx_trailing(int pixel, uint32_t color) {
     if (pixel < 0 || pixel >= STRIP_NUM_PIXELS) return;
-    set_strip_color(pixel, clr_main);
+    set_strip_color(pixel, color);
     int prev = pixel - 1;
     int next = pixel + 1;
     if (prev < 0)
         prev = STRIP_NUM_PIXELS - 1;
     if (next > STRIP_NUM_PIXELS - 1)
         next = 0;
-    if (strip.getPixelColor(prev) == CLR_BLACK)
-        set_strip_color(prev, clr_fade);
-    if (strip.getPixelColor(next) == CLR_BLACK)
-        set_strip_color(next, clr_fade);
+    if (strip.getPixelColor(prev) == STRIP_BLACK)
+        set_strip_color(prev, darken_color(color));
+    if (strip.getPixelColor(next) == STRIP_BLACK)
+        set_strip_color(next, darken_color(color));
 }
 
 void npx_trailing_set_timebased(int npx_p2, int npx_p1, int npx_n1, int npx_n2,
@@ -123,15 +104,16 @@ void strip_clock() {
 
     npx_clear();
 
-    int npx_hours = get_offset(h12 * 5);
+    float hour_pos = (h12 + (float)m / 60.0) * 5;
+    int npx_hours = get_offset((int)(hour_pos + 0.5));
     int npx_minutes = get_offset(m);
     int npx_seconds = get_offset(s);
-    set_strip_color(npx_minutes, CLR_MIN_BLK1);
+    set_strip_color(npx_minutes, STRIP_COLOR_MINUTES);
 
-    npx_trailing(npx_hours, CLR_HRS_MAIN, CLR_HRS_FADE);
+    npx_trailing(npx_hours, STRIP_COLOR_HOURS);
 
     if (npx_seconds != npx_hours && npx_seconds != npx_minutes)
-        set_strip_color(npx_seconds, CLR_SEC_MAIN);
+        set_strip_color(npx_seconds, STRIP_COLOR_SECONDS);
 
     npx_trailing_sec(npx_seconds, npx_hours, npx_minutes, ms);
     strip.show();
@@ -167,7 +149,6 @@ void strip_loading_spinner() {
 }
 
 void strip_init() {
-    init_colors();
     strip.begin();
     strip.setBrightness(255);
     strip.show();

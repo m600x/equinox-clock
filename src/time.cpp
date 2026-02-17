@@ -11,7 +11,7 @@ int parse_utc_offset(const String &utc_offset) {
     return sign * hours * 3600;
 }
 
-void sync_time() {
+void sync_remote_time() {
     if (WiFi.status() == WL_CONNECTED) {
         struct timeval tv;
         struct tm tmLocal;

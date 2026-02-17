@@ -15,7 +15,7 @@ void loop_time(void *pvParameters) {
     struct tm tmLocal;
     time_t lastSec = (time_t)-1;
 
-    sync_time();
+    sync_remote_time();
 
     while (1) {
         gettimeofday(&tv, nullptr);
@@ -44,15 +44,27 @@ void loop_time(void *pvParameters) {
 
 void loop_ux(void *pvParameters) {
     strip_init();
-    oled_init();
 
     while (1) {
+        unsigned long start = micros();
+
         if (stripState.mode.equals("spinner"))
             strip_loading_spinner();
         if (stripState.mode.equals("rainbow"))
             strip_rainbow();
         if (stripState.mode.equals("clock"))
             strip_clock();
+        delay(100);
+        
+        unsigned long elapsed = micros() - start;
+        timeState.refresh_rate = (elapsed > 0) ? (1000000 / elapsed) : 0;
+    }
+}
+
+void loop_oled(void *pvParameters) {
+    oled_init();
+
+    while (1) {
         if (oledState.active) {
             oled_main();
         }
@@ -60,7 +72,7 @@ void loop_ux(void *pvParameters) {
             oled.clearDisplay();
             oled.display();
         }
-        delay(20);
+        delay(200);
     }
 }
 
@@ -95,53 +107,15 @@ void setup() {
     pinMode(BTN_RIGHT_PIN, INPUT);
     attachInterrupt(digitalPinToInterrupt(BTN_RIGHT_PIN), btn_right_interrupt, FALLING);
 
-    xTaskCreatePinnedToCore(loop_ux, "loop_ux", 4096, NULL, 1, NULL, 0);
-    xTaskCreatePinnedToCore(loop_cron, "loop_cron", 8192, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(loop_ux, "loop_ux", 4096, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(loop_oled, "loop_oled", 4096, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(loop_cron, "loop_cron", 4096, NULL, 1, NULL, 1);
 
-    if (!pref_has_value("ssid") || pref_get_string("ssid").length() == 0) {
-        logger("No credentials found, starting AP");
-        start_ap();
-        set_builtin_led(255, 0, 0);
-    }
-    else {
-        String ssid = pref_get_string("ssid");
-        String pass = pref_get_string("pass");
-        logger("Credentials found, connecting to: [" + pass + "]");
-
-        oledState.lines[0] = "Connecting";
-        oledState.lines[2] = ssid;
-        stripState.mode = "spinner";
-
-        WiFi.disconnect(true);
-        WiFi.mode(WIFI_STA);
-        WiFi.setHostname(NAME);
-
-        if (pass.length() > 0)
-        WiFi.begin(ssid.c_str(), pass.c_str());
-        else
-        WiFi.begin(ssid.c_str());
-
-        unsigned int connect_start_time = millis();
-        while (WiFi.status() != WL_CONNECTED) {
-            if (millis() - connect_start_time > CONNECT_TIMEOUT_MS) {
-                logger("Connection timeout, switching to AP mode");
-                start_ap();
-                set_builtin_led(255, 0, 0);
-                return;
-            }
-            set_builtin_led(255, 165, 0);
-            delay(10);
-        }
-
-        oledState.lines[0] = "";
-
-        ota_init();
-        debugger_init();
-
-        pref_set_int("boot_count", 0);
-
-        xTaskCreatePinnedToCore(loop_time, "loop_time", 4096, NULL, 2, NULL, 0);
-    }
+    wifi_init();
+    ota_init();
+    debugger_init();
+    pref_set_int("boot_count", 0);
+    xTaskCreatePinnedToCore(loop_time, "loop_time", 4096, NULL, 2, NULL, 1);
 }
 
 void loop() {

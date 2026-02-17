@@ -52,3 +52,42 @@ void ota_init() {
         });
     ArduinoOTA.begin();
 }
+
+void wifi_init() {
+    if (!pref_has_value("ssid") || pref_get_string("ssid").length() == 0) {
+        logger("No credentials found, starting AP");
+        start_ap();
+        set_builtin_led(255, 0, 0);
+    }
+    else {
+        String ssid = pref_get_string("ssid");
+        String pass = pref_get_string("pass");
+        logger("Credentials found, connecting to: [" + pass + "]");
+
+        oledState.lines[0] = "Connecting";
+        oledState.lines[2] = ssid;
+        stripState.mode = "spinner";
+
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_STA);
+        WiFi.setHostname(NAME);
+
+        if (pass.length() > 0)
+        WiFi.begin(ssid.c_str(), pass.c_str());
+        else
+        WiFi.begin(ssid.c_str());
+
+        unsigned int connect_start_time = millis();
+        while (WiFi.status() != WL_CONNECTED) {
+            if (millis() - connect_start_time > CONNECT_TIMEOUT_MS) {
+                logger("Connection timeout, switching to AP mode");
+                start_ap();
+                set_builtin_led(255, 0, 0);
+                return;
+            }
+            set_builtin_led(255, 165, 0);
+            delay(10);
+        }
+        oledState.lines[0] = "";
+    }
+}

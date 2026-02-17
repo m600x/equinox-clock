@@ -29,6 +29,21 @@
 #define BTN_LEFT_PIN 4
 #define BTN_RIGHT_PIN 5
 
+#define STRIP_RED 0xFF0000
+#define STRIP_GREEN 0x00FF00
+#define STRIP_BLUE 0x0000FF
+#define STRIP_WHITE 0xFFFFFF
+#define STRIP_BLACK 0x000000
+#define STRIP_ORANGE 0xFF8000
+#define STRIP_PURPLE 0xFF00FF
+#define STRIP_YELLOW 0xFFFF00
+#define STRIP_CYAN 0x00FFFF
+#define STRIP_MAGENTA 0xFF00FF
+
+#define STRIP_COLOR_HOURS        STRIP_YELLOW
+#define STRIP_COLOR_MINUTES      STRIP_MAGENTA
+#define STRIP_COLOR_SECONDS      STRIP_CYAN
+
 extern Adafruit_NeoPixel builtin_led;
 extern Adafruit_NeoPixel strip;
 extern Adafruit_SSD1306 oled;
@@ -49,6 +64,7 @@ struct timeStruct {
     int millis = 0;
 
     char time_str[9] = "00:00:00";
+    int refresh_rate = 0;
 };
 extern timeStruct timeState;
 extern portMUX_TYPE timeMux;
@@ -79,6 +95,7 @@ void strip_init();
 void start_ap();
 void debugger_init();
 void ota_init();
+void wifi_init();
 
 // oled.cpp
 void oled_main();
@@ -95,9 +112,10 @@ void pref_clear_memory();
 void pref_boot_count();
 
 // time.cpp
-void sync_time();
+void sync_remote_time();
 
 // utils.cpp
+uint32_t darken_color(uint32_t c);
 void format_time_str_unsafe();
 void logger(String message);
 

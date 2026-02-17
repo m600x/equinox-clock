@@ -17,6 +17,9 @@ void oled_main() {
     oled.setTextSize(1);
     oled.setCursor(5, 5);
     oled.print(WiFi.localIP());
+    oled.print(" (");
+    oled.print(timeState.refresh_rate);
+    oled.print("rps)");
     oled.drawLine(0, 15, 128, 15, SSD1306_WHITE);
     
     oled.setTextSize(2);
