@@ -2,6 +2,8 @@
 
 WS2812B LED clock ring with ESP32-S3.
 
+![Rainbow](./static.jpeg)
+
 ## Hardware
 
 - **Controller**: Waveshare ESP32-S3-Zero (ESP32-S3FH4R2)
@@ -25,6 +27,8 @@ WS2812B LED clock ring with ESP32-S3.
 - Auto-clear credentials after 5 failed boot attempts
 - ArduinoOTA for wireless firmware updates
 - Status LED: white/red/green/blue on boot, green (connected)
+
+![Rainbow](./img.gif)
 
 ## Configuration
 
